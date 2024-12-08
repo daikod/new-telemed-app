@@ -1,19 +1,29 @@
 telemedicine-app/
 ├── client/                 # React frontend
-│   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── pages/        # Page components
-│   │   ├── services/     # API services
-│   │   └── utils/        # Utility functions
+│   ├── Dockerfile         # Frontend build configuration
+│   ├── nginx.conf         # Nginx configuration
+│   └── src/
+│       ├── components/    # React components
+│       ├── pages/        # Page components
+│       ├── services/     # API services
+│       └── utils/        # Utility functions
 ├── server/                # Node.js backend
+│   ├── Dockerfile        # Backend build configuration
 │   ├── config/           # Configuration files
+│   │   └── init.sql     # Database initialization
 │   ├── controllers/      # Route controllers
 │   ├── models/          # Database models
 │   ├── routes/          # API routes
 │   └── utils/           # Utilities
-├── docker/              # Docker configurations
-├── docs/               # Documentation
+├── docker/               # Docker configurations
+│   ├── nginx/           # Nginx configurations
+│   └── jitsi/           # Jitsi Meet configurations
+│       ├── web/         # Jitsi web configs
+│       ├── prosody/     # XMPP server configs
+│       ├── jicofo/      # Focus component configs
+│       └── jvb/         # Video bridge configs
+├── docs/                # Documentation
 │   └── deployment-guide.md
-├── .env                # Environment variables
-├── docker-compose.yml  # Docker compose config
-└── README.md          # Project overview 
+├── .env.example         # Environment variables template
+├── docker-compose.yml   # Docker compose configuration
+└── README.md           # Project overview 

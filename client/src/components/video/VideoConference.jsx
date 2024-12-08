@@ -1,78 +1,44 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import { getJitsiConfig } from '../../utils/jitsiConfig';
 
 const VideoConference = () => {
     const { appointmentId } = useParams();
-    const domain = process.env.REACT_APP_JITSI_DOMAIN || 'meet.jit.si';
+    const [api, setApi] = useState(null);
+    const domain = process.env.REACT_APP_JITSI_DOMAIN;
 
     useEffect(() => {
         const initJitsi = async () => {
             try {
-                // Check if appointment exists and is valid
+                // Get appointment details
                 const { data: appointment } = await axios.get(`/api/appointments/${appointmentId}`);
                 
                 if (!appointment || appointment.status !== 'scheduled') {
                     throw new Error('Invalid or cancelled appointment');
                 }
 
-                // Check if Jitsi API is loaded
                 if (!window.JitsiMeetExternalAPI) {
                     throw new Error('Jitsi Meet API not loaded');
                 }
 
-                const options = {
-                    roomName: `telemedicine-${appointmentId}`,
-                    width: '100%',
-                    height: '100%',
-                    parentNode: document.querySelector('#jitsi-container'),
-                    interfaceConfigOverwrite: {
-                        TOOLBAR_BUTTONS: [
-                            'microphone', 'camera', 'closedcaptions', 'desktop',
-                            'fullscreen', 'fodeviceselection', 'hangup', 'chat',
-                            'recording', 'livestreaming', 'etherpad', 'settings',
-                            'raisehand', 'videoquality', 'filmstrip', 'feedback',
-                            'stats', 'shortcuts', 'tileview', 'videobackgroundblur',
-                            'download', 'help', 'mute-everyone'
-                        ],
-                    },
-                    configOverwrite: {
-                        startWithAudioMuted: true,
-                        disableModeratorIndicator: true,
-                        startScreenSharing: false,
-                        enableWelcomePage: false
-                    },
-                    userInfo: {
-                        displayName: localStorage.getItem('user')?.name || 'Participant'
-                    }
-                };
-
-                const api = new window.JitsiMeetExternalAPI(domain, options);
-
-                // Handle video conference events
-                api.addEventListeners({
-                    readyToClose: () => {
-                        console.log('Video call ended');
-                    },
-                    participantLeft: () => {
-                        console.log('Participant left');
-                    },
-                    videoConferenceJoined: () => {
-                        console.log('Joined video conference');
-                    },
-                    error: (error) => {
-                        console.error('Jitsi error:', error);
-                        Swal.fire('Error', 'Video conference error occurred', 'error');
-                    }
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                const config = getJitsiConfig(appointmentId, {
+                    name: `${user.first_name} ${user.last_name}`,
+                    email: user.email
                 });
 
-                // Cleanup
-                return () => {
-                    if (api) {
-                        api.dispose();
-                    }
-                };
+                const jitsiApi = new window.JitsiMeetExternalAPI(domain, config);
+
+                jitsiApi.addEventListeners({
+                    readyToClose: handleClose,
+                    participantLeft: handleParticipantLeft,
+                    videoConferenceJoined: handleVideoConferenceJoined,
+                    videoConferenceLeft: handleVideoConferenceLeft
+                });
+
+                setApi(jitsiApi);
             } catch (error) {
                 console.error('Failed to initialize video conference:', error);
                 Swal.fire('Error', error.message, 'error');
@@ -80,11 +46,33 @@ const VideoConference = () => {
         };
 
         initJitsi();
+
+        return () => {
+            if (api) {
+                api.dispose();
+            }
+        };
     }, [appointmentId, domain]);
 
+    const handleClose = () => {
+        console.log('Video call ended');
+    };
+
+    const handleParticipantLeft = async (participant) => {
+        console.log('Participant left:', participant);
+    };
+
+    const handleVideoConferenceJoined = async (participant) => {
+        console.log('Joined video conference:', participant);
+    };
+
+    const handleVideoConferenceLeft = () => {
+        console.log('Left video conference');
+    };
+
     return (
-        <div className="h-screen">
-            <div id="jitsi-container" className="h-full w-full" />
+        <div className="h-screen bg-gray-100">
+            <div id="jitsi-container" className="w-full h-full" />
         </div>
     );
 };
