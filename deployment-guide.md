@@ -59,8 +59,8 @@ newgrp docker
 ### Environment Setup
 ```bash
 # Clone repository
-git clone https://github.com/your-username/telemedicine-app.git
-cd telemedicine-app
+git clone https://github.com/daikod/new-telemed-app.git
+cd new-telemed-app
 
 # Create environment file
 cp .env.example .env
