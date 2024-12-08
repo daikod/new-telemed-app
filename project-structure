@@ -1,0 +1,19 @@
+telemedicine-app/
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/    # React components
+│   │   ├── pages/        # Page components
+│   │   ├── services/     # API services
+│   │   └── utils/        # Utility functions
+├── server/                # Node.js backend
+│   ├── config/           # Configuration files
+│   ├── controllers/      # Route controllers
+│   ├── models/          # Database models
+│   ├── routes/          # API routes
+│   └── utils/           # Utilities
+├── docker/              # Docker configurations
+├── docs/               # Documentation
+│   └── deployment-guide.md
+├── .env                # Environment variables
+├── docker-compose.yml  # Docker compose config
+└── README.md          # Project overview 
