@@ -1,4 +1,4 @@
-# Telemedicine App
+# Telemedicine App by Daiko
 
 A comprehensive telemedicine application built with React.js and Node.js, specifically designed for the African healthcare context.
 
