@@ -1,4 +1,4 @@
-# Deployment Guide
+# Telemedicine App Deployment Guide
 
 ## Table of Contents
 1. Prerequisites
@@ -6,28 +6,21 @@
 3. Configuration
 4. Database Setup
 5. Application Deployment
-6. SSL Configuration
-7. Production Setup
-8. Maintenance
-9. Video Conferencing Setup
+6. Production Setup
+7. Maintenance
+8. Troubleshooting
 
 ## 1. Prerequisites
 
 ### System Requirements
 - Ubuntu 20.04 LTS or higher
-- 4GB RAM minimum
+- 4GB RAM minimum (8GB recommended)
 - 20GB storage minimum
-- Domain name
-- SSL certificate
-
-### Required Software
-- Docker Engine
-- Docker Compose
-- Git
+- Domain name with DNS configured
+- SSL certificates
 - SMTP server access
 
-## 2. Initial Setup
-
+### Required Software
 ```bash
 # Update system
 sudo apt update && sudo apt upgrade -y
@@ -37,184 +30,179 @@ sudo apt install -y \
     apt-transport-https \
     ca-certificates \
     curl \
-    gnupg \
-    lsb-release \
-    git
+    git \
+    nginx \
+    certbot \
+    python3-certbot-nginx
+```
 
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+## 2. Initial Setup
 
-# Install Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+### Clone Repository
+```bash
+git clone https://github.com/your-username/telemedicine-app.git
+cd telemedicine-app
+```
 
-# Add user to docker group
-sudo usermod -aG docker $USER
-newgrp docker
+### Directory Structure
+```bash
+# Create required directories
+mkdir -p {logs,backups,data/mysql}
+mkdir -p docker/jitsi/{web,prosody}/config
+chmod -R 750 docker/jitsi
 ```
 
 ## 3. Configuration
 
+### Environment Setup
 ```bash
-# Clone repository
-git clone https://github.com/your-username/telemedicine-app.git
-cd telemedicine-app
-
-# Create environment file
+# Copy environment template
 cp .env.example .env
 
-# Configure environment variables
-nano .env
+# Generate secure passwords
+export DB_PASSWORD=$(openssl rand -hex 16)
+export JWT_SECRET=$(openssl rand -hex 32)
+export JITSI_APP_ID=$(openssl rand -hex 16)
+export JITSI_APP_SECRET=$(openssl rand -hex 32)
 ```
+
+### Update Environment Variables
+Edit .env file with:
+- Database credentials
+- SMTP settings
+- JWT secret
+- Jitsi configuration
+- Domain settings
 
 ## 4. Database Setup
 
+### Initialize Database
 ```bash
-# Create data directory
-mkdir -p data/mysql
-
-# Set permissions
-sudo chown -R 999:999 data/mysql
-
-# Initialize database
+# Start database
 docker-compose up -d db
 
-# Verify database
-docker-compose exec db mysql -u root -p${DB_ROOT_PASSWORD} -e "SHOW DATABASES;"
+# Wait for database
+until docker-compose exec db mysqladmin ping -h"localhost" --silent; do
+    sleep 2
+done
 ```
 
 ## 5. Application Deployment
 
+### Development Deployment
 ```bash
-# Build and start services
-docker-compose up -d --build
+# Start all services
+docker-compose up -d
 
-# Check service status
-docker-compose ps
-
-# View logs
+# Check logs
 docker-compose logs -f
 ```
 
-## 6. SSL Configuration
-
+### Production Deployment
 ```bash
-# Install Certbot
-sudo apt install -y certbot
-
-# Obtain certificate
-sudo certbot certonly --standalone -d your-domain.com
-
-# Configure SSL
-sudo cp /etc/letsencrypt/live/your-domain.com/fullchain.pem ./docker/nginx/
-sudo cp /etc/letsencrypt/live/your-domain.com/privkey.pem ./docker/nginx/
+# Deploy with production settings
+./scripts/deploy.sh
 ```
 
-## 7. Production Setup
+## 6. Maintenance
 
+### Regular Backups
 ```bash
-# Configure firewall
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw enable
-
-# Start production services
-docker-compose -f docker-compose.prod.yml up -d
+# Setup automatic backups
+(crontab -l 2>/dev/null; echo "0 0 * * * /path/to/backup.sh") | crontab -
 ```
 
-## 8. Maintenance
-
-### Backup Database
+### Monitoring
 ```bash
-# Create backup
-docker-compose exec db mysqldump -u root -p${DB_ROOT_PASSWORD} telemedicine_db > backup.sql
+# Check service health
+./scripts/healthcheck.sh
 
-# Restore backup
-docker-compose exec -T db mysql -u root -p${DB_ROOT_PASSWORD} telemedicine_db < backup.sql
+# Monitor logs
+docker-compose logs -f
 ```
 
-### Update Application
+### Updates
 ```bash
-# Pull latest changes
+# Update application
 git pull origin main
-
-# Rebuild and restart
 docker-compose down
 docker-compose up -d --build
 ```
 
-### Monitor Logs
+## 7. Security Considerations
+
+### Firewall Configuration
 ```bash
-# View all logs
+# Configure firewall
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 8443/tcp
+sudo ufw enable
+```
+
+### SSL Certificates
+```bash
+# Install certificates
+sudo certbot --nginx -d your-domain.com
+```
+
+## 8. Troubleshooting
+
+### Common Issues
+
+1. Database Connection Errors:
+```bash
+# Check database logs
+docker-compose logs db
+
+# Verify connection
+docker-compose exec db mysql -u root -p -e "SELECT 1;"
+```
+
+2. Email Issues:
+```bash
+# Test SMTP connection
+docker-compose exec backend npm run test:email
+```
+
+3. Container Issues:
+```bash
+# Restart services
+docker-compose restart
+
+# Rebuild specific service
+docker-compose up -d --build [service-name]
+```
+
+### Logs
+
+Access logs for debugging:
+```bash
+# All services
+docker-compose logs
+
+# Specific service
+docker-compose logs [service-name]
+
+# Follow logs
 docker-compose logs -f
-
-# View specific service
-docker-compose logs -f app
 ```
 
-For additional support, please contact the development team. 
+## Support
 
-## 9. Video Conferencing Setup
+For additional support:
+1. Check the documentation
+2. Review logs
+3. Create an issue
+4. Contact support team
 
-### Jitsi Configuration
+## Security Notes
 
-1. Create required directories:
-```bash
-mkdir -p docker/jitsi/{web,prosody,jicofo,jvb}/config
-chmod -R 750 docker/jitsi
-```
-
-2. Generate secrets:
-```bash
-# Generate random secrets
-export JITSI_APP_ID=$(openssl rand -hex 16)
-export JITSI_APP_SECRET=$(openssl rand -hex 32)
-export JICOFO_AUTH_PASSWORD=$(openssl rand -hex 16)
-export JVB_AUTH_PASSWORD=$(openssl rand -hex 16)
-
-# Add to .env file
-cat >> .env << EOL
-
-# Jitsi Configuration
-JITSI_APP_ID=${JITSI_APP_ID}
-JITSI_APP_SECRET=${JITSI_APP_SECRET}
-JICOFO_AUTH_PASSWORD=${JICOFO_AUTH_PASSWORD}
-JVB_AUTH_PASSWORD=${JVB_AUTH_PASSWORD}
-EOL
-```
-
-3. Configure SSL for Jitsi:
-```bash
-# Generate certificate for Jitsi domain
-sudo certbot certonly --standalone -d ${JITSI_DOMAIN}
-
-# Copy certificates
-sudo cp /etc/letsencrypt/live/${JITSI_DOMAIN}/fullchain.pem docker/jitsi/web/
-sudo cp /etc/letsencrypt/live/${JITSI_DOMAIN}/privkey.pem docker/jitsi/web/
-sudo chown -R 999:999 docker/jitsi/web/
-```
-
-4. Configure firewall for Jitsi:
-```bash
-sudo ufw allow 10000/udp  # JVB port
-sudo ufw allow 4443/tcp   # Fallback port
-```
-
-5. Start Jitsi services:
-```bash
-docker-compose up -d jitsi-web jitsi-prosody jitsi-jicofo jitsi-jvb
-```
-
-6. Verify Jitsi deployment:
-```bash
-# Check all services are running
-docker-compose ps
-
-# Check Jitsi web interface
-curl -k https://localhost:8443
-
-# Check logs
-docker-compose logs jitsi-web
-docker-compose logs jitsi-prosody
+1. Always change default passwords
+2. Keep Docker and dependencies updated
+3. Regularly backup database
+4. Monitor system logs
+5. Use SSL/TLS in production
+6. Implement rate limiting
+7. Enable firewall rules
 ``` 

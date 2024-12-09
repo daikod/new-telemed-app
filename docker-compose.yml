@@ -10,6 +10,9 @@ services:
     environment:
       - REACT_APP_API_URL=http://localhost:5000/api
       - REACT_APP_JITSI_DOMAIN=${JITSI_DOMAIN}
+    volumes:
+      - ./client:/app
+      - /app/node_modules
     depends_on:
       - backend
 
@@ -20,6 +23,7 @@ services:
     ports:
       - "5000:5000"
     environment:
+      - NODE_ENV=development
       - DB_HOST=db
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
@@ -29,12 +33,15 @@ services:
       - SMTP_PORT=${SMTP_PORT}
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
-    depends_on:
-      - db
+      - JITSI_DOMAIN=${JITSI_DOMAIN}
+      - JITSI_APP_ID=${JITSI_APP_ID}
+      - JITSI_APP_SECRET=${JITSI_APP_SECRET}
     volumes:
       - ./server:/app
       - /app/node_modules
       - ./logs:/app/logs
+    depends_on:
+      - db
 
   db:
     image: mysql:8.0
@@ -49,14 +56,12 @@ services:
     ports:
       - "3306:3306"
 
-  # Jitsi Meet components
   jitsi-web:
     image: jitsi/web:stable-7882
     ports:
       - "8443:443"
     volumes:
       - ./docker/jitsi/web:/config:Z
-      - ./docker/jitsi/web/crontabs:/var/spool/cron/crontabs
     environment:
       - ENABLE_AUTH=1
       - ENABLE_GUESTS=1
@@ -79,7 +84,6 @@ services:
       - "5280"
     volumes:
       - ./docker/jitsi/prosody/config:/config:Z
-      - ./docker/jitsi/prosody/prosody-plugins-custom:/prosody-plugins-custom:Z
     environment:
       - AUTH_TYPE=jwt
       - ENABLE_AUTH=1
@@ -90,39 +94,6 @@ services:
       - XMPP_MUC_DOMAIN=muc.${JITSI_XMPP_DOMAIN}
       - JWT_APP_ID=${JITSI_APP_ID}
       - JWT_APP_SECRET=${JITSI_APP_SECRET}
-      - JWT_ACCEPTED_ISSUERS=${JITSI_APP_ID}
-      - JWT_ACCEPTED_AUDIENCES=${JITSI_APP_ID}
-
-  jitsi-jicofo:
-    image: jitsi/jicofo:stable-7882
-    volumes:
-      - ./docker/jitsi/jicofo:/config:Z
-    environment:
-      - XMPP_DOMAIN=${JITSI_XMPP_DOMAIN}
-      - XMPP_AUTH_DOMAIN=auth.${JITSI_XMPP_DOMAIN}
-      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.${JITSI_XMPP_DOMAIN}
-      - JICOFO_AUTH_USER=focus
-      - JICOFO_AUTH_PASSWORD=${JICOFO_AUTH_PASSWORD}
-      - JWT_APP_ID=${JITSI_APP_ID}
-      - JWT_APP_SECRET=${JITSI_APP_SECRET}
-    depends_on:
-      - jitsi-prosody
-
-  jitsi-jvb:
-    image: jitsi/jvb:stable-7882
-    ports:
-      - "10000:10000/udp"
-    volumes:
-      - ./docker/jitsi/jvb:/config:Z
-    environment:
-      - XMPP_AUTH_DOMAIN=auth.${JITSI_XMPP_DOMAIN}
-      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.${JITSI_XMPP_DOMAIN}
-      - JVB_AUTH_USER=jvb
-      - JVB_AUTH_PASSWORD=${JVB_AUTH_PASSWORD}
-      - JVB_BREWERY_MUC=jvbbrewery
-      - PUBLIC_URL=https://${JITSI_DOMAIN}
-    depends_on:
-      - jitsi-prosody
 
 volumes:
   mysql_data: 

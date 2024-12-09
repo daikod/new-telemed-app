@@ -9,8 +9,9 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Expose port
+# Create logs directory
+RUN mkdir -p logs
+
 EXPOSE 5000
 
-# Start application
 CMD ["npm", "start"] 
